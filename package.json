@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "@hxronetwork/dexterity-ts": "^1.5.24",
+    "@hxronetwork/parimutuelsdk": "^1.0.25",
+    "@project-serum/anchor": "^0.26.0",
+    "@solana/web3.js": "^1.76.0",
+    "bs58": "^5.0.0"
+  }
+}
