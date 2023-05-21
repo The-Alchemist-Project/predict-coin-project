@@ -1,4 +1,5 @@
-import {Connection} from "@solana/web3.js"
+// import { clusterApiUrl, Keypair, PublicKey } from "@solana/web3.js";
+import {clusterApiUrl, Connection} from "@solana/web3.js"
 import { FC, useState } from "react";
 import {
     ParimutuelWeb3,
@@ -9,6 +10,14 @@ import {
 import { useEffect } from "react";
 import PlacePositionBox from './PlacePositionBox'
 import { PariConfig } from "./Config";
+import predict1 from "./predict_1hour.json"
+
+interface predictPriceObj {
+    market: string;
+    closeTime: any; 
+    openPrice: any; // This is the from open session
+    predictPrice: any; // This is the predict price at close 
+}
 
 interface PariObj {
     longPool: any; // This is how much money is in the Long Pool of the contest
@@ -16,8 +25,9 @@ interface PariObj {
     longOdds: string; // This is the weighted odds of the Long Pool
     shortOdds: string; // This is the weighted odds of the Short Pool
     pubkey: string; // This is the contest pubkey
+    time: String;
     openPrice: any; // This is the from open session
-    predictPrice: string; // This is the predict price at close session time 
+    predictPrice: any; // This is the predict price at close session time 
 }
 
 const TimeInterval = [
@@ -51,13 +61,48 @@ const TimeInterval = [
     },
 ];
 
+function getConvertedData(market:string, openTime:any, duration:Number): predictPriceObj {
+	// todo:
+    // return fetch('https://api-get-predict', {
+	// 	method: 'GET',
+	// 	headers: {
+	// 		'x-rapidapi-host': 'currency-conversion-and-exchange-rates.p.rapidapi.com',
+	// 		'x-rapidapi-key': 'your_api_key',
+	// 	},
+	// })
+    
+    // test output
+    
+    if (duration == 3600){
+        // 1 hour
+        var result : predictPriceObj =  { 
+            market:market,
+            closeTime: openTime + 3600000,
+            openPrice: predict1.openPrice,
+            predictPrice: predict1.predictPrice
+        };
+        return result;
+    } else {
+        var result : predictPriceObj =  { 
+            market:market,
+            closeTime: openTime + 3600000,
+            openPrice: "N/A",
+            predictPrice: "N/A"
+        };
+        return result;
+
+    }
+}
+
 export const PariBox: FC<{ time: string }> = (props) => {
     const { time } = props;
     const selectedTime = TimeInterval.filter((data) => data.interval === time);
     const timeSeconds = selectedTime[0].seconds
     const timeTitle = selectedTime[0].title
 
-    const rpc = "https://nd-070-591-757.p2pify.com/fa53d9d2d104b54693cc40532921c340" // use your RPC instead (this one is not active)
+    const rpc = "https://rpc-devnet.helius.xyz/?api-key=64b8907e-1413-42f6-9dcd-c0f81d12f0d1" // use your RPC instead (this one is not active)
+    // const CLUSTER_NAME = "testnet";
+    // const rpc = clusterApiUrl(CLUSTER_NAME);
     const connection = new Connection(rpc, 'confirmed')
 
     const [pariObj, setPariObj] = useState<PariObj>();
@@ -71,6 +116,7 @@ export const PariBox: FC<{ time: string }> = (props) => {
     const marketsByTime = markets.filter(
         (market) => market.duration === timeSeconds
     );
+
     useEffect(() => {
         const getPariData = async () => {
             console.error("run at 76");
@@ -114,18 +160,19 @@ export const PariBox: FC<{ time: string }> = (props) => {
                     formattedTime = `${hours < 10 ? "0" + hours : hours}:${minutes < 10 ? "0" + minutes : minutes
                         }:${seconds < 10 ? "0" + seconds : seconds}`;
                 }
-                setCountDownTime(formattedTime);
 
                 longPool = longPool.toFixed(2)
                 shortPool = shortPool.toFixed(2)
 
-                ////////////////// fix
-                const openPrice = "30";
-                const predictPrice = "35";
-                console.error(openPrice);
-                console.error(predictPrice);
+                ////////////////
+                const time = formattedTime;
+                const currentTime = new Date().getTime();
+                console.log(duration)
+                const predict = getConvertedData(market,currentTime, duration);
 
-                setPariObj({ longPool, shortPool, longOdds, shortOdds, pubkey, openPrice, predictPrice });
+                const openPrice = predict.openPrice;
+                const predictPrice = predict.predictPrice;
+                setPariObj({ longPool, shortPool, longOdds, shortOdds, pubkey, time, openPrice, predictPrice});
                 /////////////////
                 
             } catch (error) {
@@ -137,7 +184,6 @@ export const PariBox: FC<{ time: string }> = (props) => {
 
         return () => clearInterval(intervalId);
     }, []);
-    console.log("oke");
 
     return (
         <div>
@@ -195,12 +241,13 @@ export const PariBox: FC<{ time: string }> = (props) => {
                         <p style={{ color: "white", fontWeight: "bold" }}>
                             {pariObj ? pariObj.shortOdds : "0"}
                         </p>
-                        <p style={{ color: "white", fontWeight: "bold" }}>{countDownTime}</p>
                         <p style={{ color: "white", fontWeight: "bold" }}>
-                            {pariObj ? pariObj.openPrice : "12"}
+                            {pariObj ? pariObj.time : "00:00:00"}</p>
+                        <p style={{ color: "white", fontWeight: "bold" }}>
+                            {pariObj ? pariObj.openPrice : "N/A"}
                         </p>
-                        <p style={{ color: "white", fontWeight: "bold" }}>
-                            {pariObj ? pariObj.predictPrice : "13"}
+                        <p style={pariObj && pariObj.predictPrice >= pariObj.openPrice || undefined? { color: "green", fontWeight: "bold" } : { color: "red", fontWeight: "bold" }}>
+                            {pariObj ? pariObj.predictPrice : "N/A"}
                         </p>
                     </div>
                 </div>
